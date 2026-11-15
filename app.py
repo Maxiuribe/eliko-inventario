@@ -17,11 +17,32 @@ from pathlib import Path
 # ─────────────────────────────────────────────────────────────
 # Configuración
 # ─────────────────────────────────────────────────────────────
-# Busca eliko.db en db/ relativo al repo, o en el directorio actual
 _repo_root = Path(__file__).parent.parent
+
+# Busca eliko.db en db/ relativo al repo, o en el directorio actual
 DB_PATH = _repo_root / "db" / "eliko.db"
 if not DB_PATH.exists():
-    DB_PATH = Path("eliko.db")  # fallback: mismo directorio
+    DB_PATH = Path("eliko.db")
+
+# Busca el SQL seed en db/ o en el directorio actual
+SQL_SEED = _repo_root / "db" / "eliko_db.sql"
+if not SQL_SEED.exists():
+    SQL_SEED = Path("eliko_db.sql")
+
+def _init_db():
+    """Inicializa la BD desde el SQL seed si no existe."""
+    if DB_PATH.exists():
+        return
+    if not SQL_SEED.exists():
+        return
+    db_dir = DB_PATH.parent
+    db_dir.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(str(DB_PATH))
+    con.executescript(SQL_SEED.read_text(encoding="utf-8"))
+    con.commit()
+    con.close()
+
+_init_db()
 
 st.set_page_config(
     page_title="Eliko Bodega — Dashboard",
@@ -35,7 +56,7 @@ st.set_page_config(
 @st.cache_resource
 def get_connection():
     if not DB_PATH.exists():
-        st.error(f"Base de datos no encontrada en: {DB_PATH}\n\nEjecuta primero: sqlite3 db/eliko.db < db/eliko_db.sql")
+        st.error(f"Base de datos no encontrada en: {DB_PATH}")
         st.stop()
     return sqlite3.connect(str(DB_PATH), check_same_thread=False)
 
